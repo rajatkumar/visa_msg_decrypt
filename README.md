@@ -36,5 +36,9 @@ If you intent to use Visa Checkout in your web app and you have a node.js server
     // print decrypted Json
     console.log(decryptedJson);
     
-    
+
+---
+
+Code Coverage : 100%    
+
 Rajat Kumar, 2016    
