@@ -18,38 +18,34 @@ fs = require('fs')
 crypto = require('crypto')
 
 class VisaPayloadDecrypt
-  constructor:(@secret, @enableLogs) ->
-    @enableLogs = @enableLogs || false
+  constructor:(@secret, @enableLogs = false) ->
 
-  decrypt: (jsonPayload) ->
-    if @secret is undefined then throw new Error('Invalid secret key.')
-    if jsonPayload?.encKey
-      dynamicSecretKey = @_decryptData(@secret, jsonPayload.encKey)
-      if (jsonPayload?.encPaymentData)
-        paymentData = @_decryptData(dynamicSecretKey, jsonPayload.encPaymentData)
-        return JSON.parse paymentData
-      else
-        throw new Error('Payload does not contain encPaymentData.')
-    else
-      throw new Error('Payload does not contain encKey.')
+  decrypt: (encKey, encPaymentData) ->
+    dynamicSecretKey = @_decryptData(@secret, encKey)
+    paymentData = @_decryptData(dynamicSecretKey, encPaymentData)
+    return JSON.parse paymentData
 
   _decryptData: (key, payload) ->
-    buf = new Buffer(payload, 'base64')
-    hmac = buf.slice(0, 32)
-    iv = buf.slice(32, 48)
-    data = buf.slice(48)
-    iv_data = buf.slice(32)
-    shaKey = crypto.createHash('sha256').update(key).digest()
-    calcHmac = crypto.createHmac('sha256', key).update(iv_data).digest('base64')
-    if @enableLogs then console.log 'HMAC:' + hmac.toString('base64')
-    if @enableLogs then console.log 'Generated HMAC:' + calcHmac
-    if hmac.toString('base64') == calcHmac
-      if @enableLogs then console.log 'HMAC verification successfull'
-      decryptor = crypto.createDecipheriv('aes-256-cbc', shaKey, iv)
-      decryptedText = decryptor.update(data, 'binary', 'binary') + decryptor.final('binary')
-      return decryptedText
-    else
+    buffer = new Buffer(payload, 'base64')
+    hmac = buffer.slice(0, 32).toString('base64')
+    iv = buffer.slice(32, 48)
+    payloadContent = buffer.slice(48)
+    dataToCalculateHmac = buffer.slice(32)
+
+    key = new Buffer(key, 'binary')
+    resultHmac = crypto.createHmac('sha256', key).update(dataToCalculateHmac).digest('base64')
+
+    if @enableLogs then console.log 'HMAC:' + hmac
+    if @enableLogs then console.log 'Generated HMAC:' + resultHmac
+
+    if hmac != resultHmac
       throw new Error('Invalid payload or key. HMAC verification failed.')
+
+    if @enableLogs then console.log 'HMAC verification successfull'
+    shaKey = crypto.createHash('sha256').update(key, 'binary').digest()
+    decryptor = crypto.createDecipheriv('aes-256-cbc', shaKey, iv)
+    decryptedText = decryptor.update(payloadContent, 'binary', 'binary') + decryptor.final('binary')
+    return decryptedText
 
 
 module.exports = VisaPayloadDecrypt

@@ -25,53 +25,41 @@
   VisaPayloadDecrypt = (function() {
     function VisaPayloadDecrypt(secret, enableLogs) {
       this.secret = secret;
-      this.enableLogs = enableLogs;
-      this.enableLogs = this.enableLogs || false;
+      this.enableLogs = enableLogs != null ? enableLogs : false;
     }
 
-    VisaPayloadDecrypt.prototype.decrypt = function(jsonPayload) {
+    VisaPayloadDecrypt.prototype.decrypt = function(encKey, encPaymentData) {
       var dynamicSecretKey, paymentData;
-      if (this.secret === void 0) {
-        throw new Error('Invalid secret key.');
-      }
-      if (jsonPayload != null ? jsonPayload.encKey : void 0) {
-        dynamicSecretKey = this._decryptData(this.secret, jsonPayload.encKey);
-        if ((jsonPayload != null ? jsonPayload.encPaymentData : void 0)) {
-          paymentData = this._decryptData(dynamicSecretKey, jsonPayload.encPaymentData);
-          return JSON.parse(paymentData);
-        } else {
-          throw new Error('Payload does not contain encPaymentData.');
-        }
-      } else {
-        throw new Error('Payload does not contain encKey.');
-      }
+      dynamicSecretKey = this._decryptData(this.secret, encKey);
+      paymentData = this._decryptData(dynamicSecretKey, encPaymentData);
+      return JSON.parse(paymentData);
     };
 
     VisaPayloadDecrypt.prototype._decryptData = function(key, payload) {
-      var buf, calcHmac, data, decryptedText, decryptor, hmac, iv, iv_data, shaKey;
-      buf = new Buffer(payload, 'base64');
-      hmac = buf.slice(0, 32);
-      iv = buf.slice(32, 48);
-      data = buf.slice(48);
-      iv_data = buf.slice(32);
-      shaKey = crypto.createHash('sha256').update(key).digest();
-      calcHmac = crypto.createHmac('sha256', key).update(iv_data).digest('base64');
+      var buffer, dataToCalculateHmac, decryptedText, decryptor, hmac, iv, payloadContent, resultHmac, shaKey;
+      buffer = new Buffer(payload, 'base64');
+      hmac = buffer.slice(0, 32).toString('base64');
+      iv = buffer.slice(32, 48);
+      payloadContent = buffer.slice(48);
+      dataToCalculateHmac = buffer.slice(32);
+      key = new Buffer(key, 'binary');
+      resultHmac = crypto.createHmac('sha256', key).update(dataToCalculateHmac).digest('base64');
       if (this.enableLogs) {
-        console.log('HMAC:' + hmac.toString('base64'));
+        console.log('HMAC:' + hmac);
       }
       if (this.enableLogs) {
-        console.log('Generated HMAC:' + calcHmac);
+        console.log('Generated HMAC:' + resultHmac);
       }
-      if (hmac.toString('base64') === calcHmac) {
-        if (this.enableLogs) {
-          console.log('HMAC verification successfull');
-        }
-        decryptor = crypto.createDecipheriv('aes-256-cbc', shaKey, iv);
-        decryptedText = decryptor.update(data, 'binary', 'binary') + decryptor.final('binary');
-        return decryptedText;
-      } else {
+      if (hmac !== resultHmac) {
         throw new Error('Invalid payload or key. HMAC verification failed.');
       }
+      if (this.enableLogs) {
+        console.log('HMAC verification successfull');
+      }
+      shaKey = crypto.createHash('sha256').update(key, 'binary').digest();
+      decryptor = crypto.createDecipheriv('aes-256-cbc', shaKey, iv);
+      decryptedText = decryptor.update(payloadContent, 'binary', 'binary') + decryptor.final('binary');
+      return decryptedText;
     };
 
     return VisaPayloadDecrypt;
