@@ -2,7 +2,7 @@
 ## Simple function to decrypt Visa Checkout Payload
 
 ##Who should use it
-If you intent to use Visa Checkout in your web app and you have a node.js server, you should use this library. Visa Checkout returns a payload that contains the consumer's information, which is encrypted. Before you decrypt the payload, you must move it (both its key, encKey, and the encrypted data, encPaymentData), to a secure server (in this case a secured node.js server). 
+If you intent to use Visa Checkout in your web app and you have a node.js server, you should use this library. Visa Checkout returns a payload that contains the consumer's information, which is encrypted. Before you decrypt the payload, you must move it (both its key, encKey, and the encrypted data, encPaymentData), to a secure server (in this case a secured node.js server).
 
 [http://developer.visacheckout.com](http://developer.visacheckout.com) is the primary website where you can find more information on Visa Checkout .
 
@@ -20,25 +20,25 @@ If you intent to use Visa Checkout in your web app and you have a node.js server
     7. The next 16 bytes should be removed and used as the IV for the decryption algorithm.
     8. Decrypt the rest of the payload using AES-256-CBC, the IV from Step 2c, and the SHA-256 hash of the decrypted dynamic key.
 
-    
-##Example 
+
+##Example
 
 
     var VisaPayloadDecrypt = require('visa_msg_decrypt');
     var Decrypt, decryptedJson;
-    
-    // constructor takes 2 parameters : 
+
+    // constructor takes 2 parameters :
     // - secret Key (string)
     // - enable logging (boolean)
     Decrypt = new VisaPayloadDecrypt(secretKey, true);
-    decryptedJson = Decrypt.decrypt(jsonPayloadSentByVisaServer);
-    
+    decryptedJson = Decrypt.decrypt(encKey, encPaymentData);
+
     // print decrypted Json
     console.log(decryptedJson);
-    
+
 
 ---
 
-Code Coverage : 100%    
+Code Coverage : 100%
 
-Rajat Kumar, 2016    
+Rajat Kumar, 2016
